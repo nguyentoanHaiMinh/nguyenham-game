@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Game Nguyên hàm – A</title>
+
+<!-- MathJax -->
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['\\(','\\)']],
+    processEscapes: true
+  },
+  options: { enableMenu: false }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+<style>
+body{font-family:Arial;background:#f4f6f8}
+.container{
+  max-width:820px;margin:40px auto;background:#fff;
+  padding:20px;border-radius:10px;
+  box-shadow:0 4px 10px rgba(0,0,0,.1)
+}
+h1{text-align:center}
+.question{font-size:22px;margin-bottom:15px}
+.answers button{
+  width:100%;margin:8px 0;padding:10px;
+  font-size:18px;border-radius:6px;
+  border:1px solid #ccc;cursor:pointer
+}
+.answers button:hover{background:#eef}
+.correct{background:#c8f7c5!important}
+.wrong{background:#f7c5c5!important}
+.info{margin-top:12px;font-weight:bold}
+.debug{font-size:13px;color:#666;margin-top:8px}
+</style>
+</head>
+
+<body>
+<div class="container">
+<h1>🎮 Game Nguyên hàm – đa dạng (A)</h1>
+
+<div id="question" class="question"></div>
+<div id="answers" class="answers"></div>
+
+<div id="stats" class="info">Số câu: 0 | Đúng: 0 | Sai: 0</div>
+<div id="info" class="info"></div>
+<div id="debug" class="debug"></div>
+
+<button onclick="nextQuestion()">Câu tiếp theo</button>
+</div>
+
+<script>
+let total=0, correctCount=0, wrongCount=0;
+let currentAnswer='', currentSolution='';
+
+function randInt(a,b){return Math.floor(Math.random()*(b-a+1))+a}
+function shuffle(a){return a.sort(()=>Math.random()-0.5)}
+function typeset(){ if(window.MathJax) MathJax.typeset() }
+
+function generate(){
+  let q='', correct='', wrong=[], solution='', allowNoC=false;
+
+  const type = randInt(1,6);
+
+  // 1. kx^n
+  if(type===1){
+    allowNoC=true;
+    let k=randInt(-10,10)||1;
+    let n=randInt(1,9);
+    q=`\\(\\int ${k}x^{${n}}\\,dx=?\\)`;
+    correct=`\\frac{${k}x^{${n+1}}}{${n+1}}+C`;
+    wrong=[
+      `${k}x^{${n+1}}+C`,
+      `\\frac{${k}x^{${n}}}{${n}}+C`
+    ];
+    solution='Áp dụng công thức ∫xⁿdx = xⁿ⁺¹/(n+1)';
+  }
+
+  // 2. ax^n ± bx^m (ĐÁP ÁN NHIỄU GIỐNG THẬT)
+if(type===2){
+  let a = randInt(-9,9)||1;
+  let b = randInt(-9,9)||1;
+  let n = randInt(2,8);
+  let m = randInt(2,8);
+  if(n===m) m++;
+
+  let sign = Math.random()<0.5 ? '+' : '-';
+
+  q = `\\(\\int(${a}x^{${n}}${sign}${b}x^{${m}})dx=?\\)`;
+
+  const A = `\\frac{${a}x^{${n+1}}}{${n+1}}`;
+  const B = `\\frac{${b}x^{${m+1}}}{${m+1}}`;
+
+  correct = `${A}${sign==='+'?'+':'-'}${B}+C`;
+  solution = 'Tách từng hạng tử, áp dụng công thức lũy thừa';
+
+  wrong = [
+    // ❌ sai mẫu số 1 hạng tử
+    `\\frac{${a}x^{${n+1}}}{${n}}${sign==='+'?'+':'-'}${B}+C`,
+
+    // ❌ sai số mũ
+    `\\frac{${a}x^{${n}}}{${n+1}}${sign==='+'?'+':'-'}${B}+C`,
+
+    // ❌ quên +C
+    `${A}${sign==='+'?'+':'-'}${B}`
+  ];
+}
+
+  // 3. sin / cos
+  if(type===3){
+    allowNoC=true;
+    if(Math.random()<0.5){
+      q=`\\(\\int \\sin x\\,dx=?\\)`;
+      correct=`-\\cos x+C`;
+      wrong=[`\\cos x+C`,`-\\sin x+C`];
+      solution='∫sin x dx = −cos x';
+    }else{
+      q=`\\(\\int \\cos x\\,dx=?\\)`;
+      correct=`\\sin x+C`;
+      wrong=[`-\\sin x+C`,`\\cos x+C`];
+      solution='∫cos x dx = sin x';
+    }
+  }
+
+  // 4. 1/x^n
+  if(type===4){
+    let n=randInt(2,9);
+    q=`\\(\\int \\frac1{x^{${n}}}\\,dx=?\\)`;
+    correct=`-\\frac1{${n-1}x^{${n-1}}}+C`;
+    wrong=[`\\ln|x|+C`,`\\frac1{x}+C`];
+    solution='Đổi về x^(−n)';
+  }
+
+  // 5. sec² / csc²
+  if(type===5){
+    if(Math.random()<0.5){
+      q=`\\(\\int \\frac1{\\cos^2x}\\,dx=?\\)`;
+      correct=`\\tan x+C`;
+      wrong=[`-\\cot x+C`,`\\sin x+C`];
+      solution='∫sec²x dx = tan x';
+    }else{
+      q=`\\(\\int \\frac1{\\sin^2x}\\,dx=?\\)`;
+      correct=`-\\cot x+C`;
+      wrong=[`\\tan x+C`,`\\cos x+C`];
+      solution='∫csc²x dx = −cot x';
+    }
+  }
+
+  // 6. a^x
+  if(type===6){
+    let a=randInt(2,10);
+    q=`\\(\\int ${a}^x\\,dx=?\\)`;
+    correct=`\\frac{${a}^x}{\\ln ${a}}+C`;
+    wrong=[`${a}^x+C`,`x${a}^x+C`];
+    solution='∫a^x dx = a^x / ln a';
+  }
+
+  if(allowNoC && Math.random()<0.5)
+    wrong.push(correct.replace('+C',''));
+
+  wrong=shuffle([...new Set(wrong)]).slice(0,3);
+  return {q,correct,wrong,solution};
+}
+
+function nextQuestion(){
+  document.getElementById('info').innerHTML='';
+  const data=generate();
+  currentAnswer=data.correct;
+  currentSolution=data.solution;
+
+  document.getElementById('question').innerHTML=data.q;
+  const box=document.getElementById('answers');
+  box.innerHTML='';
+
+  shuffle([data.correct,...data.wrong]).forEach(op=>{
+    const b=document.createElement('button');
+    b.innerHTML=`\\(${op}\\)`;
+    b.onclick=()=>check(b,op);
+    box.appendChild(b);
+  });
+
+  document.getElementById('debug').innerText='DEBUG: '+data.q;
+  typeset();
+}
+
+function check(btn,op){
+  total++;
+  document.querySelectorAll('.answers button')
+    .forEach(b=>b.disabled=true);
+
+  if(op===currentAnswer){
+    btn.classList.add('correct');
+    correctCount++;
+    document.getElementById('info').innerHTML=
+      `✅ Đúng!<br><b>Lời giải:</b> ${currentSolution}`;
+  }else{
+    btn.classList.add('wrong');
+    wrongCount++;
+    document.getElementById('info').innerHTML=
+      `❌ Sai! Đáp án đúng: \\(${currentAnswer}\\)<br><b>Lời giải:</b> ${currentSolution}`;
+  }
+
+  document.getElementById('stats').innerText=
+    `Số câu: ${total} | Đúng: ${correctCount} | Sai: ${wrongCount}`;
+  typeset();
+}
+
+nextQuestion();
+</script>
+</body>
+</html>
